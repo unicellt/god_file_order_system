@@ -1,0 +1,345 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "god_file_order_system legacy map",
+    "languages": ["zh", "python", "markdown"],
+    "frameworks": ["sqlite"],
+    "description": "基于 legacy_structure_report.md 生成的遗留订单系统理解图谱，聚焦 public API、职责板块、隐式状态、多套规则和特征测试锁定面。",
+    "analyzedAt": "2026-06-06T00:00:00+08:00",
+    "sourceDocument": "legacy_structure_report.md"
+  },
+  "nodes": [
+    {
+      "id": "document:legacy_structure_report.md",
+      "type": "document",
+      "name": "legacy_structure_report.md",
+      "filePath": "legacy_structure_report.md",
+      "summary": "重构前的只读现状报告，列出 API、职责、状态、多套实现、可疑行为和第一批特征测试。",
+      "tags": ["报告", "遗留系统", "重构前基线"]
+    },
+    {
+      "id": "file:order_system.py",
+      "type": "file",
+      "name": "order_system.py",
+      "filePath": "order_system.py",
+      "summary": "单文件订单系统，包含结算、库存、风控、持久化、报表、支付、通知和大量兼容入口。",
+      "tags": ["god-file", "python", "订单系统"]
+    },
+    {
+      "id": "module:public-api",
+      "type": "module",
+      "name": "Public API / 调用入口",
+      "summary": "真实调用面包括 dispatch_checkout、OrderSystem、CheckoutFacade、旧 calc 入口、报价入口、后台服务和全局对象。",
+      "tags": ["入口", "兼容面", "下游依赖"]
+    },
+    {
+      "id": "function:order_system.py:dispatch_checkout",
+      "type": "function",
+      "name": "dispatch_checkout",
+      "filePath": "order_system.py",
+      "summary": "对外统一下单入口，受 use_legacy_v1 feature flag 控制，可能返回两种结构。",
+      "tags": ["入口", "feature-flag", "返回结构分叉"]
+    },
+    {
+      "id": "class:order_system.py:OrderSystem",
+      "type": "class",
+      "name": "OrderSystem",
+      "filePath": "order_system.py",
+      "summary": "核心 god class，checkout 将计价、折扣、税费、积分、风控、库存、落库和通知串在一起。",
+      "tags": ["核心链路", "god-class", "副作用集中"]
+    },
+    {
+      "id": "function:order_system.py:OrderSystem.checkout",
+      "type": "function",
+      "name": "OrderSystem.checkout",
+      "filePath": "order_system.py",
+      "summary": "正式下单结算路径，返回订单 dict，同时推进订单号、更新会话、扣库存、写库、写事件、改 user 积分。",
+      "tags": ["主链路", "结算", "隐式输出"]
+    },
+    {
+      "id": "module:legacy-calculators",
+      "type": "module",
+      "name": "旧结算入口",
+      "summary": "calc_v0、calc_v1、calc_v2、legacy_calc、get_price、quick_total 等兼容函数仍可能被报表和老批处理调用。",
+      "tags": ["旧实现", "兼容层", "多口径"]
+    },
+    {
+      "id": "module:quote-reconcile",
+      "type": "module",
+      "name": "报价 / 对账实现",
+      "summary": "quote、PriceQuoteBuilder、checkout_v3_experimental、RegionalSettlement 和 SettlementReconciler 都能算价但口径不同。",
+      "tags": ["报价", "对账", "多套实现"]
+    },
+    {
+      "id": "module:validation-config-ops",
+      "type": "module",
+      "name": "校验 / 配置 / 运营",
+      "summary": "CartValidator、ConfigManager、CouponIssuer、InventoryAdmin、GiftCardService、LoyaltyManager 等后台入口会修改全局状态或传入对象。",
+      "tags": ["后台", "配置", "可变全局"]
+    },
+    {
+      "id": "module:inventory-fulfillment",
+      "type": "module",
+      "name": "库存 / 仓配",
+      "summary": "OrderSystem.reserve/release、InventoryAdmin、WarehouseRouter、InventoryForecast、ShippingLabelPrinter 等共同处理库存和发货。",
+      "tags": ["库存", "仓配", "副作用"]
+    },
+    {
+      "id": "module:tax-shipping",
+      "type": "module",
+      "name": "税 / 运费",
+      "summary": "checkout 粗税粗运费与 TaxCalculator、ShippingCalculator、RegionalSettlement 的细口径并存。",
+      "tags": ["税", "运费", "规则分叉"]
+    },
+    {
+      "id": "module:promo-coupon-gift",
+      "type": "module",
+      "name": "促销 / 券 / 礼品卡",
+      "summary": "COUPON_CATALOG、checkout coupon 分支、PromoEngine、CouponIssuer、GiftCardService、BundleCatalog、GiftWrapService 形成多套优惠体系。",
+      "tags": ["促销", "优惠券", "礼品卡"]
+    },
+    {
+      "id": "module:risk",
+      "type": "module",
+      "name": "风控",
+      "summary": "OrderSystem.risk_score 是主链路分数，ExtRiskEngine 是解释型扩展分数，两套口径不同。",
+      "tags": ["风控", "拒单", "规则分叉"]
+    },
+    {
+      "id": "module:payment-after-sale",
+      "type": "module",
+      "name": "支付 / 售后 / 状态",
+      "summary": "PaymentSimulator、RefundEngine、DisputeCenter、OrderStateMachine 处理支付、退款、争议和状态，但 checkout 直接写状态字符串。",
+      "tags": ["支付", "退款", "状态机"]
+    },
+    {
+      "id": "module:report-notify-display",
+      "type": "module",
+      "name": "报表 / 通知 / 展示",
+      "summary": "OrderSystem.notify、NotificationDispatcher、ReportBuilder、Analytics、TaxFilingReport、ReceiptPrinter 等从订单和事件流读取不同口径。",
+      "tags": ["报表", "通知", "展示"]
+    },
+    {
+      "id": "table:order_system.db:orders",
+      "type": "table",
+      "name": "orders",
+      "filePath": "order_system.db",
+      "summary": "订单表，id 为主键，data 保存 JSON 化订单。",
+      "tags": ["sqlite", "订单"]
+    },
+    {
+      "id": "table:order_system.db:inventory",
+      "type": "table",
+      "name": "inventory",
+      "filePath": "order_system.db",
+      "summary": "库存表，由 _INVENTORY 封装读写，checkout reserve 会扣减。",
+      "tags": ["sqlite", "库存"]
+    },
+    {
+      "id": "table:order_system.db:reservations",
+      "type": "table",
+      "name": "reservations",
+      "filePath": "order_system.db",
+      "summary": "预留表，记录订单占用库存；风控拒单后可能保留预留。",
+      "tags": ["sqlite", "预留", "风险点"]
+    },
+    {
+      "id": "table:order_system.db:audit",
+      "type": "table",
+      "name": "audit",
+      "filePath": "order_system.db",
+      "summary": "审计日志表，库存、保存、通知、退款、配置、支付等路径都会追加消息。",
+      "tags": ["sqlite", "审计"]
+    },
+    {
+      "id": "table:order_system.db:events",
+      "type": "table",
+      "name": "events",
+      "filePath": "order_system.db",
+      "summary": "事件流表，保存 order_confirmed、order_rejected、payment_captured、notification_sent 等事件。",
+      "tags": ["sqlite", "事件流"]
+    },
+    {
+      "id": "table:order_system.db:payments",
+      "type": "table",
+      "name": "payments",
+      "filePath": "order_system.db",
+      "summary": "支付记录表，PaymentSimulator 写入授权和退款状态。",
+      "tags": ["sqlite", "支付"]
+    },
+    {
+      "id": "table:order_system.db:gift_cards",
+      "type": "table",
+      "name": "gift_cards",
+      "filePath": "order_system.db",
+      "summary": "礼品卡余额表，GiftCardService 发行和抵扣会写入。",
+      "tags": ["sqlite", "礼品卡"]
+    },
+    {
+      "id": "table:order_system.db:seq",
+      "type": "table",
+      "name": "seq",
+      "filePath": "order_system.db",
+      "summary": "订单序列表，dry_run 也会推进 order 序号。",
+      "tags": ["sqlite", "序列", "可疑行为"]
+    },
+    {
+      "id": "concept:global-config",
+      "type": "concept",
+      "name": "全局配置表",
+      "summary": "FEATURE_FLAGS、TAX_TABLE、COUPON_CATALOG、SHIPPING_TABLE、RISK_RULES 等全局配置会隐式影响多条路径。",
+      "tags": ["配置", "隐式输入"]
+    },
+    {
+      "id": "concept:memory-state",
+      "type": "concept",
+      "name": "内存状态",
+      "summary": "_SESSION、_CACHE、OrderSystem._tmp、_last_breakdown、LoyaltyManager.history、DisputeCenter.cases 等不在数据库中的状态。",
+      "tags": ["内存", "会话", "缓存"]
+    },
+    {
+      "id": "concept:suspicious-behaviors",
+      "type": "concept",
+      "name": "可疑行为",
+      "summary": "看起来像 bug 但重构前要锁住，包括 dry_run 推号、拒单不释放预留、缺货不落库、双通知、事后改 total 等。",
+      "tags": ["特征测试", "风险", "现状锁定"]
+    },
+    {
+      "id": "concept:characterization-tests",
+      "type": "concept",
+      "name": "第一批特征测试",
+      "summary": "优先锁入口兼容、checkout 正常单、dry_run、风控库存顺序、缺货、EU 特例、券边界、积分边界、多口径差异和副作用。",
+      "tags": ["测试", "重构保护网"]
+    }
+  ],
+  "edges": [
+    {"source": "document:legacy_structure_report.md", "target": "file:order_system.py", "type": "documents", "weight": 0.8},
+    {"source": "file:order_system.py", "target": "module:public-api", "type": "contains", "weight": 1.0},
+    {"source": "file:order_system.py", "target": "class:order_system.py:OrderSystem", "type": "contains", "weight": 1.0},
+    {"source": "file:order_system.py", "target": "module:legacy-calculators", "type": "contains", "weight": 1.0},
+    {"source": "module:public-api", "target": "function:order_system.py:dispatch_checkout", "type": "contains", "weight": 1.0},
+    {"source": "module:public-api", "target": "class:order_system.py:OrderSystem", "type": "contains", "weight": 1.0},
+    {"source": "function:order_system.py:dispatch_checkout", "target": "function:order_system.py:OrderSystem.checkout", "type": "calls", "weight": 0.8},
+    {"source": "function:order_system.py:dispatch_checkout", "target": "module:legacy-calculators", "type": "calls", "weight": 0.8},
+    {"source": "function:order_system.py:dispatch_checkout", "target": "concept:global-config", "type": "reads_from", "weight": 0.7},
+    {"source": "class:order_system.py:OrderSystem", "target": "function:order_system.py:OrderSystem.checkout", "type": "contains", "weight": 1.0},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "module:tax-shipping", "type": "depends_on", "weight": 0.6},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "module:promo-coupon-gift", "type": "depends_on", "weight": 0.6},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "module:risk", "type": "depends_on", "weight": 0.6},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "module:inventory-fulfillment", "type": "calls", "weight": 0.8},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "module:report-notify-display", "type": "publishes", "weight": 0.6},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "concept:memory-state", "type": "writes_to", "weight": 0.7},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "table:order_system.db:seq", "type": "writes_to", "weight": 0.7},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "table:order_system.db:orders", "type": "writes_to", "weight": 0.7},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "table:order_system.db:inventory", "type": "writes_to", "weight": 0.7},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "table:order_system.db:reservations", "type": "writes_to", "weight": 0.7},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "table:order_system.db:audit", "type": "writes_to", "weight": 0.7},
+    {"source": "function:order_system.py:OrderSystem.checkout", "target": "table:order_system.db:events", "type": "publishes", "weight": 0.7},
+    {"source": "module:quote-reconcile", "target": "function:order_system.py:OrderSystem.checkout", "type": "similar_to", "weight": 0.5},
+    {"source": "module:legacy-calculators", "target": "function:order_system.py:OrderSystem.checkout", "type": "similar_to", "weight": 0.5},
+    {"source": "module:validation-config-ops", "target": "concept:global-config", "type": "configures", "weight": 0.6},
+    {"source": "module:validation-config-ops", "target": "table:order_system.db:inventory", "type": "writes_to", "weight": 0.6},
+    {"source": "module:promo-coupon-gift", "target": "concept:global-config", "type": "configures", "weight": 0.6},
+    {"source": "module:promo-coupon-gift", "target": "table:order_system.db:gift_cards", "type": "writes_to", "weight": 0.7},
+    {"source": "module:payment-after-sale", "target": "table:order_system.db:payments", "type": "writes_to", "weight": 0.7},
+    {"source": "module:payment-after-sale", "target": "table:order_system.db:inventory", "type": "writes_to", "weight": 0.6},
+    {"source": "module:payment-after-sale", "target": "table:order_system.db:events", "type": "publishes", "weight": 0.6},
+    {"source": "module:report-notify-display", "target": "table:order_system.db:orders", "type": "reads_from", "weight": 0.7},
+    {"source": "module:report-notify-display", "target": "table:order_system.db:events", "type": "reads_from", "weight": 0.7},
+    {"source": "module:report-notify-display", "target": "table:order_system.db:audit", "type": "reads_from", "weight": 0.7},
+    {"source": "concept:suspicious-behaviors", "target": "function:order_system.py:OrderSystem.checkout", "type": "related", "weight": 0.5},
+    {"source": "concept:suspicious-behaviors", "target": "concept:characterization-tests", "type": "tested_by", "weight": 0.5},
+    {"source": "concept:characterization-tests", "target": "module:public-api", "type": "related", "weight": 0.5},
+    {"source": "concept:characterization-tests", "target": "module:quote-reconcile", "type": "related", "weight": 0.5},
+    {"source": "concept:characterization-tests", "target": "module:payment-after-sale", "type": "related", "weight": 0.5}
+  ],
+  "layers": [
+    {
+      "id": "layer:entrypoints",
+      "name": "入口与兼容层",
+      "description": "下游可能直接调用的 public API、统一入口、god class 和旧结算兼容函数。",
+      "nodeIds": [
+        "module:public-api",
+        "function:order_system.py:dispatch_checkout",
+        "class:order_system.py:OrderSystem",
+        "function:order_system.py:OrderSystem.checkout",
+        "module:legacy-calculators",
+        "module:quote-reconcile"
+      ]
+    },
+    {
+      "id": "layer:business-rules",
+      "name": "业务规则板块",
+      "description": "税费、促销、风控、库存、支付售后、通知报表等散落职责。",
+      "nodeIds": [
+        "module:validation-config-ops",
+        "module:inventory-fulfillment",
+        "module:tax-shipping",
+        "module:promo-coupon-gift",
+        "module:risk",
+        "module:payment-after-sale",
+        "module:report-notify-display"
+      ]
+    },
+    {
+      "id": "layer:state",
+      "name": "状态与副作用",
+      "description": "sqlite 表、全局配置和内存状态构成隐式输入输出。",
+      "nodeIds": [
+        "table:order_system.db:orders",
+        "table:order_system.db:inventory",
+        "table:order_system.db:reservations",
+        "table:order_system.db:audit",
+        "table:order_system.db:events",
+        "table:order_system.db:payments",
+        "table:order_system.db:gift_cards",
+        "table:order_system.db:seq",
+        "concept:global-config",
+        "concept:memory-state"
+      ]
+    },
+    {
+      "id": "layer:refactor-safety",
+      "name": "重构保护网",
+      "description": "可疑行为和第一批特征测试，用于先锁现状再重构。",
+      "nodeIds": [
+        "document:legacy_structure_report.md",
+        "file:order_system.py",
+        "concept:suspicious-behaviors",
+        "concept:characterization-tests"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "先看报告和 god file",
+      "description": "从 legacy_structure_report.md 与 order_system.py 建立整体背景：这是一个单文件遗留订单系统。",
+      "nodeIds": ["document:legacy_structure_report.md", "file:order_system.py"]
+    },
+    {
+      "order": 2,
+      "title": "识别下游调用面",
+      "description": "重点检查 dispatch_checkout、OrderSystem.checkout、旧 calc 入口和报价入口，因为这些最可能被外部依赖。",
+      "nodeIds": ["module:public-api", "function:order_system.py:dispatch_checkout", "module:legacy-calculators", "module:quote-reconcile"]
+    },
+    {
+      "order": 3,
+      "title": "穿过主 checkout",
+      "description": "沿着 checkout 查看计价、折扣、税费、积分、风控、库存、落库和通知的串联副作用。",
+      "nodeIds": ["function:order_system.py:OrderSystem.checkout", "module:inventory-fulfillment", "module:risk", "module:report-notify-display"]
+    },
+    {
+      "order": 4,
+      "title": "画出隐式状态",
+      "description": "理解 sqlite 表、全局配置和内存状态如何被不同职责读写。",
+      "nodeIds": ["concept:global-config", "concept:memory-state", "table:order_system.db:orders", "table:order_system.db:events", "table:order_system.db:inventory"]
+    },
+    {
+      "order": 5,
+      "title": "用特征测试锁住可疑行为",
+      "description": "把 dry_run 推号、拒单预留、缺货不落库、多套金额口径等行为先写成测试，作为后续重构保护网。",
+      "nodeIds": ["concept:suspicious-behaviors", "concept:characterization-tests"]
+    }
+  ]
+}

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Understand Knowledge Graph</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #020617;
+      color: #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    header {
+      padding: 24px 28px 18px;
+      border-bottom: 1px solid #1e293b;
+      background: rgba(15, 23, 42, .78);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(10px);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(680px, 1fr) 360px;
+      gap: 18px;
+      padding: 18px;
+    }
+    .panel {
+      background: rgba(15, 23, 42, .72);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .panel h2 {
+      margin: 0;
+      padding: 14px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid #1e293b;
+      color: #f8fafc;
+    }
+    .graph-wrap {
+      height: 690px;
+      overflow: auto;
+      background-image:
+        linear-gradient(#1e293b 1px, transparent 1px),
+        linear-gradient(90deg, #1e293b 1px, transparent 1px);
+      background-size: 36px 36px;
+      background-color: #020617;
+    }
+    svg { display: block; min-width: 1080px; }
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 12px;
+      padding: 14px;
+    }
+    .stat {
+      border: 1px solid #263449;
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(30, 41, 59, .46);
+    }
+    .stat b {
+      display: block;
+      font-size: 20px;
+      color: #67e8f9;
+      margin-bottom: 4px;
+    }
+    .stat span {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+    .list {
+      padding: 12px;
+      max-height: 280px;
+      overflow: auto;
+    }
+    .item {
+      padding: 10px;
+      border: 1px solid #243247;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, .42);
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .item:hover { border-color: #22d3ee; }
+    .item-title {
+      font-size: 12px;
+      color: #f8fafc;
+      margin-bottom: 5px;
+    }
+    .item-meta {
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .detail {
+      padding: 14px;
+      min-height: 220px;
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+    .pill {
+      display: inline-block;
+      margin: 3px 5px 0 0;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(34, 211, 238, .12);
+      color: #67e8f9;
+      border: 1px solid rgba(34, 211, 238, .32);
+      font-size: 10px;
+    }
+    .node rect {
+      stroke-width: 1.4;
+      cursor: pointer;
+    }
+    .node text {
+      pointer-events: none;
+    }
+    .edge {
+      stroke: #64748b;
+      stroke-width: 1.1;
+      opacity: .68;
+      marker-end: url(#arrow);
+    }
+    .edge-label {
+      fill: #94a3b8;
+      font-size: 8px;
+    }
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 1fr; }
+      .graph-wrap { height: 560px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Understand Knowledge Graph</h1>
+    <div class="subtitle" id="project-summary">正在读取 .understand-anything/knowledge-graph.json ...</div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>图谱视图</h2>
+      <div class="stats" id="stats"></div>
+      <div class="graph-wrap">
+        <svg id="graph" viewBox="0 0 1080 760" role="img" aria-label="knowledge graph"></svg>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>节点详情</h2>
+        <div class="detail" id="detail">点击图中的节点查看详情。</div>
+      </section>
+      <section class="panel">
+        <h2>Layers</h2>
+        <div class="list" id="layers"></div>
+      </section>
+      <section class="panel">
+        <h2>Tour</h2>
+        <div class="list" id="tour"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const typeStyle = {
+      document: ["rgba(30,41,59,.72)", "#94a3b8"],
+      file: ["rgba(30,41,59,.72)", "#94a3b8"],
+      module: ["rgba(6,78,59,.46)", "#34d399"],
+      function: ["rgba(8,51,68,.46)", "#22d3ee"],
+      class: ["rgba(8,51,68,.46)", "#22d3ee"],
+      table: ["rgba(76,29,149,.5)", "#a78bfa"],
+      concept: ["rgba(136,19,55,.46)", "#fb7185"],
+      config: ["rgba(120,53,15,.4)", "#fbbf24"],
+      endpoint: ["rgba(8,51,68,.46)", "#22d3ee"]
+    };
+
+    function esc(text) {
+      return String(text ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[c]));
+    }
+
+    function shortName(name, max = 20) {
+      const s = String(name || "");
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    }
+
+    function showDetail(node) {
+      const tags = (node.tags || []).map(t => `<span class="pill">${esc(t)}</span>`).join("");
+      document.getElementById("detail").innerHTML =
+        `<b>${esc(node.name)}</b>\n` +
+        `类型：${esc(node.type)}\n` +
+        `ID：${esc(node.id)}\n` +
+        (node.filePath ? `文件：${esc(node.filePath)}\n` : "") +
+        `\n${esc(node.summary || "")}\n\n${tags}`;
+    }
+
+    function drawGraph(graph) {
+      const svg = document.getElementById("graph");
+      const nodes = graph.nodes || [];
+      const edges = graph.edges || [];
+      const byId = new Map(nodes.map(n => [n.id, n]));
+      const positions = new Map();
+      const columns = [
+        { x: 55, types: ["document", "file", "endpoint"] },
+        { x: 300, types: ["class", "function"] },
+        { x: 545, types: ["module", "concept"] },
+        { x: 815, types: ["config", "table"] }
+      ];
+      columns.forEach(col => {
+        const picked = nodes.filter(n => col.types.includes(n.type));
+        picked.forEach((n, i) => positions.set(n.id, { x: col.x, y: 58 + i * 82 }));
+      });
+      nodes.forEach((n, i) => {
+        if (!positions.has(n.id)) positions.set(n.id, { x: 545, y: 58 + i * 70 });
+      });
+
+      svg.innerHTML = `
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"></polygon>
+          </marker>
+        </defs>
+      `;
+
+      const edgeGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      edges.forEach(e => {
+        const s = positions.get(e.source);
+        const t = positions.get(e.target);
+        if (!s || !t) return;
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const sx = s.x + 180;
+        const sy = s.y + 26;
+        const tx = t.x;
+        const ty = t.y + 26;
+        const mid = Math.max(20, Math.abs(tx - sx) / 2);
+        line.setAttribute("d", `M ${sx} ${sy} C ${sx + mid} ${sy}, ${tx - mid} ${ty}, ${tx} ${ty}`);
+        line.setAttribute("class", "edge");
+        edgeGroup.appendChild(line);
+      });
+      svg.appendChild(edgeGroup);
+
+      const nodeGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      nodes.forEach(node => {
+        const p = positions.get(node.id);
+        const [fill, stroke] = typeStyle[node.type] || typeStyle.module;
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "node");
+        g.innerHTML = `
+          <rect x="${p.x}" y="${p.y}" width="180" height="54" rx="7" fill="#0f172a"></rect>
+          <rect x="${p.x}" y="${p.y}" width="180" height="54" rx="7" fill="${fill}" stroke="${stroke}"></rect>
+          <text x="${p.x + 90}" y="${p.y + 22}" fill="#f8fafc" font-size="11" font-weight="700" text-anchor="middle">${esc(shortName(node.name))}</text>
+          <text x="${p.x + 90}" y="${p.y + 39}" fill="#94a3b8" font-size="8" text-anchor="middle">${esc(node.type)}</text>
+        `;
+        g.addEventListener("click", () => showDetail(node));
+        nodeGroup.appendChild(g);
+      });
+      svg.appendChild(nodeGroup);
+    }
+
+    function renderLists(graph) {
+      document.getElementById("stats").innerHTML = [
+        ["节点", graph.nodes?.length || 0],
+        ["边", graph.edges?.length || 0],
+        ["层", graph.layers?.length || 0],
+        ["导览", graph.tour?.length || 0]
+      ].map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join("");
+
+      document.getElementById("layers").innerHTML = (graph.layers || []).map(layer => `
+        <div class="item">
+          <div class="item-title">${esc(layer.name)}</div>
+          <div class="item-meta">${esc(layer.description)}<br>节点数：${(layer.nodeIds || []).length}</div>
+        </div>
+      `).join("");
+
+      document.getElementById("tour").innerHTML = (graph.tour || []).map(step => `
+        <div class="item">
+          <div class="item-title">${step.order}. ${esc(step.title)}</div>
+          <div class="item-meta">${esc(step.description)}</div>
+        </div>
+      `).join("");
+    }
+
+    fetch(".understand-anything/knowledge-graph.json")
+      .then(r => r.json())
+      .then(graph => {
+        document.getElementById("project-summary").textContent =
+          `${graph.project?.name || "Knowledge Graph"}：${graph.project?.description || ""}`;
+        renderLists(graph);
+        drawGraph(graph);
+      })
+      .catch(err => {
+        document.getElementById("project-summary").textContent = "读取 knowledge-graph.json 失败：" + err.message;
+      });
+  </script>
+</body>
+</html>
