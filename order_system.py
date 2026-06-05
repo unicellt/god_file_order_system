@@ -496,6 +496,19 @@ class OrderSystem:
             return 0.0
         return cfg["base"] + cfg["per_kg"] * w
 
+    def _checkout_shipping_fee(self, items, current_total):
+        """checkout 当前使用的运费口径。"""
+        cfg = SHIPPING_TABLE.get(self.region, SHIPPING_TABLE["cn"])
+        weight = 0.0
+        for it in items:
+            weight += it.get("weight", 0.5) * it["qty"]
+        if self._tmp.get("force_freeship"):
+            return 0.0
+        # 免运费门槛：用当前的 t 判断
+        if current_total >= cfg["free_threshold"]:
+            return 0.0
+        return cfg["base"] + cfg["per_kg"] * weight
+
     def quote(self, items, user, coupon=None):
         """报价：给前端展示用的预估，不落库、不扣库存、不发通知。
         """
@@ -678,19 +691,7 @@ class OrderSystem:
         bd["after_tax"] = t
 
         # ---------------- 6. 运费 ----------------
-        cfg = SHIPPING_TABLE.get(self.region, SHIPPING_TABLE["cn"])
-        weight = 0.0
-        for it in items:
-            weight += it.get("weight", 0.5) * it["qty"]
-        ship = 0.0
-        if self._tmp.get("force_freeship"):
-            ship = 0.0
-        else:
-            # 免运费门槛：用当前的 t 判断
-            if t >= cfg["free_threshold"]:
-                ship = 0.0
-            else:
-                ship = cfg["base"] + cfg["per_kg"] * weight
+        ship = self._checkout_shipping_fee(items, t)
         t = t + ship
         bd["shipping"] = ship
 
