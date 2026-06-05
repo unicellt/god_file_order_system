@@ -441,6 +441,43 @@ class OrderSystem:
         # luxury / digital / subscription 不打折
         return p
 
+    def _checkout_price_line(self, it):
+        """checkout 当前使用的单行计价口径。"""
+        p = it["price"] * it["qty"]
+        c = it.get("cat")
+        if c == "fresh":
+            if it["qty"] >= 3:
+                p = p * 0.9
+        elif c == "book":
+            if it["qty"] >= 5:
+                p = p * 0.8
+            elif it["qty"] >= 2:
+                p = p * 0.95
+        elif c == "electronics":
+            if it["qty"] >= 2:
+                p = p * 0.95
+                # eu 区清仓追加折扣（2019Q4 大促临时加的，活动早结束了）
+                if self.region == "eu":
+                    p = p * 0.95
+        elif c == "clothing":
+            if it["qty"] >= 4:
+                p = p * 0.92
+        elif c == "grocery":
+            if it["qty"] >= 6:
+                p = p * 0.93
+        elif c == "luxury":
+            pass
+        elif c == "digital":
+            pass
+        elif c == "subscription":
+            pass
+        else:
+            pass
+        # eu 历史上要求每行金额都展示到分，这里逐行 round 一下
+        if self.region == "eu" and FEATURE_FLAGS["round_eu_per_item"]:
+            p = _round2(p)
+        return p
+
     def vip_discount(self, t, user):
         """VIP 折扣。"""
         if not user.get("vip"):
@@ -574,39 +611,8 @@ class OrderSystem:
         t = 0.0
         line_items = []
         for i in items:
-            p = i["price"] * i["qty"]
             c = i.get("cat")
-            if c == "fresh":
-                if i["qty"] >= 3:
-                    p = p * 0.9
-            elif c == "book":
-                if i["qty"] >= 5:
-                    p = p * 0.8
-                elif i["qty"] >= 2:
-                    p = p * 0.95
-            elif c == "electronics":
-                if i["qty"] >= 2:
-                    p = p * 0.95
-                    # eu 区清仓追加折扣（2019Q4 大促临时加的，活动早结束了）
-                    if self.region == "eu":
-                        p = p * 0.95
-            elif c == "clothing":
-                if i["qty"] >= 4:
-                    p = p * 0.92
-            elif c == "grocery":
-                if i["qty"] >= 6:
-                    p = p * 0.93
-            elif c == "luxury":
-                pass
-            elif c == "digital":
-                pass
-            elif c == "subscription":
-                pass
-            else:
-                pass
-            # eu 历史上要求每行金额都展示到分，这里逐行 round 一下
-            if self.region == "eu" and FEATURE_FLAGS["round_eu_per_item"]:
-                p = _round2(p)
+            p = self._checkout_price_line(i)
             t = t + p
             line_items.append({"sku": i.get("sku"), "cat": c, "line": p, "qty": i["qty"]})
         bd["subtotal_after_cat"] = t
