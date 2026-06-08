@@ -478,6 +478,22 @@ class OrderSystem:
             p = _round2(p)
         return p
 
+    def _checkout_apply_vip_discount(self, total, user):
+        """checkout 当前使用的 VIP 折扣口径。"""
+        if user.get("vip"):
+            lv = user.get("vip_level", 1)
+            if lv == 1:
+                total = total * 0.98
+            elif lv == 2:
+                total = total * 0.95
+            elif lv == 3:
+                total = total * 0.9
+            elif lv == 4:
+                total = total * 0.88
+            elif lv >= 5:
+                total = total * 0.85
+        return total
+
     def vip_discount(self, t, user):
         """VIP 折扣。"""
         if not user.get("vip"):
@@ -640,18 +656,7 @@ class OrderSystem:
         sub_before_discounts = t
 
         # ---------------- 2. VIP 折扣 ----------------
-        if user.get("vip"):
-            lv = user.get("vip_level", 1)
-            if lv == 1:
-                t = t * 0.98
-            elif lv == 2:
-                t = t * 0.95
-            elif lv == 3:
-                t = t * 0.9
-            elif lv == 4:
-                t = t * 0.88
-            elif lv >= 5:
-                t = t * 0.85
+        t = self._checkout_apply_vip_discount(t, user)
         bd["after_vip"] = t
 
         # ---------------- 3. 优惠券 ----------------
