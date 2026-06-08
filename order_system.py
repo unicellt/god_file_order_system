@@ -509,6 +509,10 @@ class OrderSystem:
             return 0.0
         return cfg["base"] + cfg["per_kg"] * weight
 
+    def _checkout_tax_amount(self, taxable_amount):
+        """checkout 当前使用的一刀切税额口径。"""
+        return taxable_amount * self.tax
+
     def quote(self, items, user, coupon=None):
         """报价：给前端展示用的预估，不落库、不扣库存、不发通知。
         """
@@ -685,7 +689,7 @@ class OrderSystem:
         sub_after_discounts = t
 
         # ---------------- 5. 税 ----------------
-        tax_amt = t * self.tax
+        tax_amt = self._checkout_tax_amount(t)
         t = t + tax_amt
         bd["tax"] = tax_amt
         bd["after_tax"] = t
