@@ -513,6 +513,10 @@ class OrderSystem:
         """checkout 当前使用的一刀切税额口径。"""
         return taxable_amount * self.tax
 
+    def _checkout_currency_code(self):
+        """checkout 当前使用的返回币种 code 口径。"""
+        return CURRENCY_RATES.get(self.region, ("CNY", 1.0))[0]
+
     def quote(self, items, user, coupon=None):
         """报价：给前端展示用的预估，不落库、不扣库存、不发通知。
         """
@@ -758,7 +762,7 @@ class OrderSystem:
             "id": oid, "user": user.get("id"), "region": self.region,
             "items": line_items, "total": total, "breakdown": bd,
             "status": status, "points_earned": earned, "points_used": used_pts,
-            "currency": CURRENCY_RATES.get(self.region, ("CNY", 1.0))[0],
+            "currency": self._checkout_currency_code(),
         }
         self._last_breakdown = bd
 
