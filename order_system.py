@@ -494,6 +494,16 @@ class OrderSystem:
                 total = total * 0.85
         return total
 
+    def _checkout_resolve_coupon(self, coupon):
+        """checkout 当前使用的优惠券解析口径。"""
+        coup = None
+        if coupon:
+            if isinstance(coupon, str):
+                coup = COUPON_CATALOG.get(coupon)
+            else:
+                coup = coupon
+        return coup
+
     def vip_discount(self, t, user):
         """VIP 折扣。"""
         if not user.get("vip"):
@@ -660,12 +670,7 @@ class OrderSystem:
         bd["after_vip"] = t
 
         # ---------------- 3. 优惠券 ----------------
-        coup = None
-        if coupon:
-            if isinstance(coupon, str):
-                coup = COUPON_CATALOG.get(coupon)
-            else:
-                coup = coupon
+        coup = self._checkout_resolve_coupon(coupon)
         if coup:
             ct = coup.get("type")
             if ct == "fixed":
